@@ -1,18 +1,26 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, Any, List
+from zoneinfo import ZoneInfo
 
-async def calculate_monthly_revenue(property_id: str, month: int, year: int, db_session=None) -> Decimal:
+UTC = ZoneInfo("UTC")
+
+async def calculate_monthly_revenue(property_id: str, month: int, year: int, tenant_id: str, property_timezone: str = "UTC", db_session=None) -> Decimal:
     """
     Calculates revenue for a specific month.
     """
 
-    start_date = datetime(year, month, 1)
+    tz = ZoneInfo(property_timezone)
+
+    start_local = datetime(year, month, 1, tzinfo=tz)
     if month < 12:
-        end_date = datetime(year, month + 1, 1)
+        end_local = datetime(year, month + 1, 1, tzinfo=tz)
     else:
-        end_date = datetime(year + 1, 1, 1)
-        
+        end_local = datetime(year + 1, 1, 1, tzinfo=tz)
+
+    start_date = start_local.astimezone(UTC)
+    end_date = end_local.astimezone(UTC)
+
     print(f"DEBUG: Querying revenue for {property_id} from {start_date} to {end_date}")
 
     # SQL Simulation (This would be executed against the actual DB)
@@ -44,7 +52,7 @@ async def calculate_total_revenue(property_id: str, tenant_id: str) -> Dict[str,
         await db_pool.initialize()
         
         if db_pool.session_factory:
-            async with db_pool.get_session() as session:
+            async with db_pool.session_factory() as session:
                 # Use SQLAlchemy text for raw SQL
                 from sqlalchemy import text
                 
